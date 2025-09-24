@@ -338,7 +338,8 @@ balanceplot <- function(x,
     par(mai = mai)
   } else {
     mar <- par("mar")
-    mar[2] <- max(nchar(x)) + mar[2] # assume one line per character
+    mar[2] <- max(nchar(rownames(x))) + # assume one line per character
+              mar[2]
     par(mar = mar)
   }
 

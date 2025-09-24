@@ -166,10 +166,29 @@ test_that("Issue 21: Cairo/pango errors when running plot.xbal", {
     # at the moment, I haven't found a way to capture the stderr output from the C level pango function
     # so, we'll just have to know that if the errors appear in the output stream during testing
     # we should come here to see the test case (not the best strategy)
+    svg(tmpo)
+    plot(xb)
+    dev.off()
+    file.remove(tmpo)
 
+    bt <- balanceTest(z ~ x+ y, data=data)
     tmpf <- tempfile()
     svg(tmpf)
-    plot(xb)
+    plot(bt)
+    dev.off()
+    
+    file.remove(tmpf)
+    tmpf <- tempfile()
+    svg(tmpf)
+    plot.xbal(bt, ggplot=FALSE)
+    dev.off()
+    file.remove(tmpf)
+    
+    bt$results["y", "std.diff",1] <- NA
+   
+    tmpf <- tempfile()
+    svg(tmpf)
+    plot.xbal(bt, ggplot=FALSE)
     dev.off()
     file.remove(tmpf)
   }
