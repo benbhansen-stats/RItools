@@ -152,7 +152,7 @@ test_that("Generic balance plots", {
 
 
 test_that("Issue 21: Cairo/pango errors when running plot.xbal", {
-  if (capabilities()["cairo"]) {
+  if (capabilities()["cairo"] && nchar(grSoftVersion()["cairo"])>0) {
     set.seed(20130522)
 
     z <- rbinom(100, size = 1, prob = 1/2)
