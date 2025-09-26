@@ -1,3 +1,7 @@
+# RItools {NEXTVERSION}
+
+* Bug fix (base R plot method svg export)
+
 # RItools 0.3-5
 
 * Now "Depends" on the `survival` package to bring in the `strata` and `cluster`
