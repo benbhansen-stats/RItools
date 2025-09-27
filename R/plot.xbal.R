@@ -334,11 +334,15 @@ balanceplot <- function(x,
 
   if (names(dev.cur()) != "svg") {
     mai <- par('mai')
-    mai[2] <- max(strwidth(rownames(x), units = "inches")) + mai[2]
+    mai[2] <- max(c(strwidth(rownames(x), units = "inches"),
+                    0)# avoids returning -Inf in case `x` has length 0
+                  ) + mai[2]
     par(mai = mai)
   } else {
     mar <- par("mar")
-    mar[2] <- max(nchar(rownames(x))) + # assume one line per character
+    mar[2] <- max(c(nchar(rownames(x)),
+                    0) # avoids returning -Inf in case `x` has length 0
+                  ) + # assume one line per character
               mar[2]
     par(mar = mar)
   }
