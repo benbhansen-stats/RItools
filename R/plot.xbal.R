@@ -342,7 +342,7 @@ balanceplot <- function(x,
     mar <- par("mar")
     mar[2] <- max(c(nchar(rownames(x)),
                     0) # avoids returning -Inf in case `x` has length 0
-                  ) + # assume one line per character
+                  )/2 + # assume 1/2 line per character
               mar[2]
     par(mar = mar)
   }
