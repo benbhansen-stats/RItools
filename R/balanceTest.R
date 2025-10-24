@@ -250,6 +250,9 @@ balanceTest <- function(fmla,
   ## we wanted to allow departures from the ETT default.
   ## Something like `design@Sweights <- DesignWeights(aggDesign, <...>)`.)
   descriptives    <- designToDescriptives(design, covariate.scales)
+  ## The notmissing indicators can't themselves be missing, so no role for
+  ## another notmissing indicator to record where its missingness pattern.
+  ## Instead we just record a blank for them:
   NMpatterns <- c(NMpatterns, rep("", dim(descriptives)[1]-length(NMpatterns)))
 
   # these weights govern inferential but not descriptive calculations
@@ -309,9 +312,15 @@ balanceTest <- function(fmla,
         function(mat){mat[-toremove, -toremove, drop=FALSE]}
         )
       origvars <- origvars[-toremove]
-                  strings_to_remove <- dimnames(descriptives)[["vars"]][toremove]
-                  NMpatterns <- NMpatterns[-toremove]  # names of vars that
-                  NMpatterns[ NMpatterns%in% strings_to_remove] <- ""
+
+      ## also trim covars to NM patterns lookup table:
+      NMpatterns <- NMpatterns[-toremove]
+      ## If the NM pattern var that a covar got mapped to
+      ## was removed, we take the covar to have no missings
+      ## anywhere, and report "" as the name of its nonmissing
+      ## indicator variable:
+      strings_to_remove <- dimnames(descriptives)[["vars"]][toremove]
+      NMpatterns[ NMpatterns%in% strings_to_remove] <- ""
 	  }
   }
 
