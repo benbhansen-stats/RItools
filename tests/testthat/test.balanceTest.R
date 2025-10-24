@@ -159,12 +159,11 @@ test_that("balT returns covariance of tests", {
 
   expect_equal(length(tcov), 2)
 
-  ## Developer note: to strip out entries corresponding to intercept -- which has var 0,
-  ## except when there's variation in unit weights and/or cluster sizes --
-  ## have to filter out rows and cols named "(Intercept)", separately for each
-  ## entry in list tcov.  (Recording while updating test that follows, `c(4,4)` --> `c(5,5)`)
-  expect_equal(dim(tcov[[1]]), c(5,5))
-})
+  ## The intercept is removed as it has permutational var 0 in this case.
+  ## That variance can be positive when there's variation in unit weights
+  ##  and/or cluster sizes; if then tcov would have another row and columm.
+  expect_equal(dim(tcov[[1]]), c(4,4))
+    })
 })
 
 test_that("Passing post.alignment.transform, #26", {
