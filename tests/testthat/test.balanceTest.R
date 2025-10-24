@@ -163,6 +163,8 @@ test_that("balT returns covariance of tests", {
   ## That variance can be positive when there's variation in unit weights
   ##  and/or cluster sizes; if then tcov would have another row and columm.
   expect_equal(dim(tcov[[1]]), c(4,4))
+  expect_equivalent(dimnames(tcov[[1]])[[1]], dimnames(res$results)[[1]])
+  expect_equivalent(dimnames(tcov[[2]])[[1]], dimnames(res$results)[[1]])
     })
 })
 
@@ -436,6 +438,14 @@ test_that("Characters and factors", {
   btc <- balanceTest(z ~ char, data = d)
   btf <- balanceTest(z ~ fact, data = d)
   
-  expect_equal(dim(btc$results), dim(btf$results))
+  ## removing expected difference before comparing...
+  attr(btc$results, "term.labels") <-
+    attr(btf$results, "term.labels")
+  expect_equal(unname(btc$results), unname(btf$results))
+  expect_equal(unname(attr(btc$overall, "tcov")[["--"]]),
+               unname(attr(btf$overall, "tcov")[["--"]]))
+  ## removing another expected difference...
+  attr(btc$overall, "tcov")[["--"]] <-
+    attr(btf$overall, "tcov")[["--"]]
   expect_equal(btc$overall, btf$overall)
 })

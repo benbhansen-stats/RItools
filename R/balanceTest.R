@@ -286,7 +286,10 @@ balanceTest <- function(fmla,
   colnames(inferentials) <- c("chisquare", "df", "p.value")
 
   tcovs <- lapply(tmp, function(r) {
-    r$tcov
+    tcov <- r$tcov
+    dimnames(tcov) <- 
+      rep(list(dimnames(descriptives)[["vars"]]),2)
+    tcov
   })
 
   # Deal with summaries of not-missing indicators that only ever take the value T
