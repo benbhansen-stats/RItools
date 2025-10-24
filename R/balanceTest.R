@@ -287,7 +287,7 @@ balanceTest <- function(fmla,
 
   tcovs <- lapply(tmp, function(r) {
     tcov <- r$tcov
-    dimnames(tcov) <- 
+    dimnames(tcov) <-
       rep(list(dimnames(descriptives)[["vars"]]),2)
     tcov
   })
@@ -322,7 +322,10 @@ balanceTest <- function(fmla,
   attr(descriptives, "NMpatterns") <- NMpatterns
   attr(descriptives, "originals") <- origvars
   attr(descriptives, "term.labels") <- design@TermLabels
-  attr(descriptives, "include.NA.flags") <- include.NA.flags # hinting for print and plot methods
+# Now `attr(d, "term.labels")[attr(d, "originals")]`
+# associates variables to terms of fmla
+  attr(descriptives, "include.NA.flags") <- 
+    include.NA.flags # hint to print and plot methods
 
 # the meat of our xbal object
   ans$overall <- inferentials
@@ -333,4 +336,4 @@ balanceTest <- function(fmla,
   attr(ans, "report") <- report # hinting to our summary method later
   class(ans) <- c("balancetest", "xbal", "list")
   ans
-  }
+}

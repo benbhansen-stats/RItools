@@ -449,3 +449,24 @@ test_that("Characters and factors", {
     attr(btf$overall, "tcov")[["--"]]
   expect_equal(btc$overall, btf$overall)
 })
+
+test_that("Return variable/fmla term association", {
+    set.seed(393911)
+  tmp <- sample(letters[1:3], 100, replace = TRUE)
+  d <- data.frame(categorical = tmp,
+                  scalar1 = rnorm(100),
+                  scalar2 = rnorm(100),
+                  z = rep(c(1,0), 50),
+                  stringsAsFactors = FALSE)
+  bt <- balanceTest(z ~ categorical + scalar1 + 
+          poly(scalar2, degree=2), data = d)
+  originals_ <- attr(bt$results, "originals")
+  term.labels_ <- attr(bt$results, "term.labels")
+  expect_equal(term.labels_[originals_], 
+               c(rep("categorical", length(unique(tmp))), 
+                 "scalar1", 
+                 rep("poly(scalar2, degree = 2)",2)
+                )
+  )
+
+})
