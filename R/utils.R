@@ -375,7 +375,12 @@ XtX_pseudoinv_sqrt <- function(mat, mat.is.XtX = FALSE, tol = .Machine$double.ep
   
   if (nrow(mat) == 0 && ncol(mat) == 0)
   {
-    stop("Cannot calculate pseudoinverse: perhaps all covariates are constant (within strata)?")
+    warning(paste("Cannot calculate pseudoinverse:",
+      "perhaps all covariates are constant (within strata)?",
+    collapse="\\n"))
+    ans <- matrix(NA_real_, 0, 0)
+    attr(ans, "r") <- 0
+    return(ans)
   }
   
   pst.svd <- try(svd(mat, nu=0))

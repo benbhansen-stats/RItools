@@ -411,16 +411,21 @@ test_that("Constant variables", {
                   s = as.factor(sample(letters[1:3], 100, replace = TRUE)),
                   z = rep(c(1,0), 50))
   
-  ## this should be ok, no error
-  bt <- balanceTest(z ~ xv + xc, data = d)
-  
+  exp_na_results <- c("z", "p") 
+  ## this should be ok, no warnings
+  expect_silent(bt <- balanceTest(z ~ xv + xc, data = d))
+  expect_false(any(is.na(bt$results[1,exp_na_results,1])))
+
   ## but this gives problems
-  expect_error(balanceTest(z ~ xc, data = d),
+  expect_warning(bt2 <- balanceTest(z ~ xc, data = d),
                "Cannot calculate pseudoinverse")
-  
+  expect_true(all(is.na(bt2$results[1,exp_na_results,1])))
+  ###expect_true(is.na(bt2$overall[1,"p.value"]))
   ## this too
-  expect_error(balanceTest(z ~ s + strata(s), data = d),
+  expect_warning(bt3 <- balanceTest(z ~ s + strata(s), data = d),
                "Cannot calculate pseudoinverse")
+  expect_true(all(is.na(bt3$results[,exp_na_results,"s"])))
+  ###expect_true(is.na(bt3$overall["s","p.value"]))
 })
 
 
