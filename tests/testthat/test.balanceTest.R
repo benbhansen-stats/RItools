@@ -417,14 +417,14 @@ test_that("Constant variables", {
   expect_false(any(is.na(bt$results[1,exp_na_results,1])))
 
   ## but this gives problems
-  expect_warning(bt2 <- balanceTest(z ~ xc, data = d),
-               "Cannot calculate pseudoinverse")
+  expect_message(bt2 <- balanceTest(z ~ xc, data = d),
+               "perhaps all covariates are constant")
   expect_true(all(is.na(bt2$results[1,exp_na_results,1])))
   expect_true(is.na(bt2$overall[1,"p.value"]))
 
   ## issues here too
-  expect_warning(bt3 <- balanceTest(z ~ s + strata(s), data = d),
-               "Cannot calculate pseudoinverse")
+  expect_message(bt3 <- balanceTest(z ~ s + strata(s), data = d),
+               "perhaps all covariates are constant")
   expect_true(all(is.na(bt3$results[,exp_na_results,"s"])))
   expect_true(is.na(bt3$overall["s","p.value"]))
 })
