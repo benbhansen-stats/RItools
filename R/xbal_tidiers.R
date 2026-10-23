@@ -1,4 +1,4 @@
-#' [broom::tidy()/glance()] methods for [RItools::balanceTest()/xBalance()] results
+#' `broom::tidy()`/`glance()` methods for `balanceTest()` results
 #'
 #' Portion out the value of a [RItools::balanceTest()] call in a manner consistent
 #' with assumptions of the broom package.  
@@ -26,36 +26,54 @@
 #' }
 #' Additional parameters beyond those listed here are ignored (at this time).
 #'
-#' @param x object of class `"xbal"`, result of [RItools::balancetest()]
+#' @param x object of class `"xbal"`, result of [RItools::balanceTest()]
 #'    or [RItools::xBalance()]
 #' @param strata which stratification to return info about? Defaults
 #'    to last one specified in originating function call (which appears first in the xbal array).
 #' @param varnames_crosswalk character vector of new names for xbal columns, named by the xbal column
-#' @param ... Not used.
-#' @return data frame composed of: for `[RItools::tidy()]`, a column of variable labels (`vars`) and
-#'         additional columns of balance-related stats; for `[RItools::glance()]`, scalars describing
+#' @param format if true, apply `[RItools:::original_units_var_formatter()]` to suitable sub-array en route
+#' @param digits passed to `[RItools:::original_units_var_formatter()]`
+#' @param ... Additional arguments passed to `[RItools:::original_units_var_formatter()]`
+#' @return data frame composed of: for `[RItools::tidy()]`, a column of variable labels (`vars`) and 
+#'         additional columns of balance-related stats; for `[RItools::glance()]`, scalars describing 
 #'         a combined differences test, if found, and otherwise `NULL`.
 #' @export
-tidy.xbal <- function(x, strata=dimnames(x[['results']])[['strata']][1],
-                      varnames_crosswalk=c("z"="statistic", "p"="p.value"),
-                      ...
+#' @md
+tidy.xbal <- function(x,
+                      strata = dimnames(x[['results']])[['strata']][1],
+                      varnames_crosswalk = c("z"="statistic", "p"="p.value"),
+                      format = FALSE,
+                      digits=max(2, getOption("digits")-4),...
                       )
 {
     ans <- x[['results']][,,strata, drop=FALSE]
     dim(ans) <- dim(ans)[1:2]
     ans <- as.data.frame(ans)
     colnames(ans) <- dimnames(x[['results']])[['stat']]
+
+    orig_units_columns <- intersect(c("Treatment", "Control", "adj.diff", "pooled.sd"),
+                                    dimnames(x[['results']])[['stat']])
+    if (format && length(orig_units_columns))
+    {
+        fres <- original_units_var_formatter(x[['results']][,orig_units_columns,,drop=FALSE], digits=digits, ...)
+        fres <- fres[,,strata, drop=FALSE]
+        dim(fres) <- dim(fres)[1:2]
+        ans[,orig_units_columns] <- fres
+        }
+    
     ans <- data.frame(vars=dimnames(x[['results']])[['vars']], ans)
+    ans$NA.info <- if (is.null(attr(x[['results']], "NMpatterns")))
+                   {
+                       NA_real_
+                   } else attr(x[['results']], "NMpatterns")
     row.names(ans) <- 1L:nrow(ans)
     xbalvars <- c("vars", "Control", "Treatment",
                   "adj.diff", "std.diff", "pooled.sd",
-                  "z", "p")
+                  "z", "p", "NA.info")
     names(xbalvars) <- xbalvars
     vars <- c(xbalvars[setdiff(names(xbalvars), names(varnames_crosswalk))],
               varnames_crosswalk)
-    reportme <- intersect(names(vars),
-                      c('vars', dimnames(x[['results']])[['stat']])
-                      )#to adjust order of columns
+    reportme <- colnames(ans) %in% names(vars)
     ans <- ans[reportme]
     colnames(ans) <- vars[colnames(ans)]
     ans

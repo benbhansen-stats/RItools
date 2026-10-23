@@ -2,7 +2,8 @@
 % Please edit documentation in R/xtable.xbal.R
 \name{xtable.xbal}
 \alias{xtable.xbal}
-\title{An \code{xtable} method for \code{xbal} objects}
+\alias{xtable.balancetest}
+\title{An \code{xtable} method for \code{xbal} and \code{balancetest} objects}
 \usage{
 \method{xtable}{xbal}(
   x,
@@ -11,13 +12,14 @@
   align = c("l", rep("r", ncol(xvardf))),
   digits = 2,
   display = NULL,
+  auto = FALSE,
   col.labels = NULL,
   ...
 )
 }
 \arguments{
 \item{x}{An object resulting from a call to
-\code{\link{balanceTest}}.}
+\code{\link{balanceTest}} or \code{\link{xBalance}}.}
 
 \item{caption}{See \code{\link[xtable]{xtable}}.}
 
@@ -30,6 +32,8 @@ columns, see details, below.}
 \item{digits}{See \code{\link[xtable]{xtable}}. Default is 2.}
 
 \item{display}{See \code{\link[xtable]{xtable}}.}
+
+\item{auto}{See \code{\link[xtable]{xtable}}.}
 
 \item{col.labels}{Labels for the columns (the test
 statistics). Default are come from the call to
@@ -71,10 +75,7 @@ require(xtable)
 # indicating which sites are control and treatment units, with
 # stratification by the 'pt' factor to group similar sites
 xb1 <- balanceTest(pr ~ date + t1 + t2 + cap + ne + ct + bw + cum.n + strata(pt),
-                data = nuclearplants,
-                report = c('adj.means', 'adj.mean.diffs',
-                           'std.diffs', 'z.scores',
-                           'chisquare.test', 'p.values'))
+                data = nuclearplants)
 
 xb1.xtab <- xtable(xb1) # This table has right aligned columns
 

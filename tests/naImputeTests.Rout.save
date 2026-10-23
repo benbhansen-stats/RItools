@@ -25,7 +25,6 @@ The following object is masked from 'package:base':
 
     backsolve
 
-Loading required package: survival
 > data(nuclearplants)
 > 
 > testdata<-nuclearplants

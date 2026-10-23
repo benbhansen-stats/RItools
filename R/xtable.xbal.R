@@ -16,9 +16,9 @@
 ##' lines \code{\\usepackage\{dcolumn\}} and
 ##' \code{\\newcolumntype\{.\}\{D\{.\}\{.\}\{2.2\}\}} to your LaTeX
 ##' document's preamble.
-##' @title An \code{xtable} method for \code{xbal} objects
+##' @title An \code{xtable} method for \code{xbal} and \code{balancetest} objects
 ##' @param x An object resulting from a call to
-##'   \code{\link{balanceTest}}.
+##'   \code{\link{balanceTest}} or \code{\link{xBalance}}.
 ##' @param caption See \code{\link[xtable]{xtable}}.
 ##' @param label See \code{\link[xtable]{xtable}}.
 ##' @param align See \code{\link[xtable]{xtable}}. Our default (as of
@@ -26,6 +26,7 @@
 ##'   columns, see details, below.
 ##' @param digits See \code{\link[xtable]{xtable}}. Default is 2.
 ##' @param display See \code{\link[xtable]{xtable}}.
+##' @param auto See \code{\link[xtable]{xtable}}.
 ##' @param col.labels Labels for the columns (the test
 ##'   statistics). Default are come from the call to
 ##'   \code{\link{print.xbal}}.
@@ -35,6 +36,7 @@
 ##'   \code{\link[xtable]{print.xtable}}).
 ##' @export
 ##' @import xtable
+##' @aliases xtable.balancetest
 ##' @examples
 ##' data(nuclearplants)
 ##' require(xtable)
@@ -43,10 +45,7 @@
 ##' # indicating which sites are control and treatment units, with
 ##' # stratification by the 'pt' factor to group similar sites
 ##' xb1 <- balanceTest(pr ~ date + t1 + t2 + cap + ne + ct + bw + cum.n + strata(pt),
-##'                 data = nuclearplants,
-##'                 report = c('adj.means', 'adj.mean.diffs',
-##'                            'std.diffs', 'z.scores',
-##'                            'chisquare.test', 'p.values'))
+##'                 data = nuclearplants)
 ##'
 ##' xb1.xtab <- xtable(xb1) # This table has right aligned columns
 ##'
@@ -67,6 +66,7 @@ xtable.xbal <- function(x,
                         align = c("l",rep("r",ncol(xvardf))),
                         digits = 2,
                         display = NULL,
+                        auto = FALSE,
                         col.labels=NULL,
                         ...) {
   ##By default use decimal alignment, which will require the dcolumn package in latex and an appropriate column definition like:

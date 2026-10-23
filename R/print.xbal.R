@@ -1,6 +1,6 @@
-##' A \code{print} method for \code{xBalance} objects.
+##' A \code{print} method for balance test objects produced by \code{xBalance} and \code{balanceTest}.
 ##'
-##' @title Printing xBalance Objects
+##' @title Printing xBalance and balanceTest Objects
 ##' @param x An object of class "xbal" which is the result of a call
 ##'   to \code{xBalance}.
 ##' @param which.strata The stratification candidates to include in
@@ -30,23 +30,16 @@
 ##' \item{overalltable}{If the overall Chi-squared statistic is
 ##'   requested, a formatted version of that table is returned.}
 ##' }
-##' @seealso xBalance
+##' @seealso \code{\link{xBalance}}, \code{\link{balanceTest}}
 ##' @export
-##' @aliases print
+##' @aliases print print.balancetest
 ##' @keywords print
 ##' @examples
 ##' data(nuclearplants)
 ##'
-##' xb0 <- balanceTest(pr~ date + t1 + t2 + cap + ne + ct + bw + cum.n,
-##'               data=nuclearplants)
 ##'
-##' print(xb0)
-##'
-##' xb1 <- balanceTest(pr~ date + t1 + t2 + cap + ne + ct + bw + cum.n + strata(pt),
-##'          data = nuclearplants,
-##'          report = c("all"))
-##'
-##' str(xb1)
+##' xb1 <- balanceTest(pr ~ date + t1 + t2 + cap + ne + ct + bw + cum.n + strata(pt),
+##'          data = nuclearplants)
 ##'
 ##' print(xb1)
 ##'
@@ -67,10 +60,9 @@
 ##'       which.vars = c("date", "t1"),
 ##'       which.stats = c("pr=0", "pr=1", "z", "p"))}
 ##'
-##' ## Now, not asking for the omnibus test
+##' ## Only printing out a specific stratification factor
 ##' xb2 <- balanceTest(pr~ date + t1 + t2 + cap + ne + ct + bw + cum.n + strata(pt),
-##'          data = nuclearplants,
-##'          report = c("all"))
+##'          data = nuclearplants)
 ##'
 ##' print(xb2, which.strata = "pt")
 print.xbal <- function (x, which.strata=dimnames(x$results)[["strata"]],
@@ -104,7 +96,7 @@ print.xbal <- function (x, which.strata=dimnames(x$results)[["strata"]],
       report <- attr(x, "report")
     }
     x <- subset(x, vars = which.vars, strata = which.strata, stats = which.stats)
-    theresults <- x$results
+    results_array <- x$results
 
     # for historical reasons, what the user requests and the column names in the per-variable table are not the same
     lookup <- c("std.diffs" = "std.diff", "z.scores" = "z",
@@ -128,14 +120,14 @@ print.xbal <- function (x, which.strata=dimnames(x$results)[["strata"]],
       tmp <- lookup[report[report %in% names(lookup)]]
 
       # likewise, don't grab any columns that aren't there
-      theresults <- theresults[, tmp[tmp %in% dimnames(theresults)[["stat"]]], , drop = FALSE]
+      results_array <- results_array[, tmp[tmp %in% dimnames(results_array)[["stat"]]], , drop = FALSE]
     }
 
     ## Mark the columns that will require by-row sigfig handling
     orig_units_columns <- intersect(c("Treatment", "Control", "adj.diff", "pooled.sd"),
-                                    dimnames(theresults)[["stat"]])
+                                    dimnames(results_array)[["stat"]])
 
-    hasP <- "p" %in% dimnames(theresults)[["stat"]]
+    hasP <- "p" %in% dimnames(results_array)[["stat"]]
 
     if("chisquare.test" %in% report || "all" %in% report) { ##Extract the omnibus chisquared test from the xbal object...
       theoverall <- x$overall
@@ -143,14 +135,14 @@ print.xbal <- function (x, which.strata=dimnames(x$results)[["strata"]],
       theoverall<-NULL ##..or set it to NULL if it does not exist.
     }
 
-    if (length(theresults) == 0 && is.null(theoverall)) {
+    if (length(results_array) == 0 && is.null(theoverall)) {
       stop("There is a problem. Probably all of the variables (",
            all.vars(formula(x)),
            ") are constants within strata. Or else there is some other problem, try debug(RItools:::xBalance) to see what might be going on.")
     }
 
-    if (length(theresults)==0 && !is.null(theoverall)){##The user has requested only the omnibus test and not the tests for the individual variables
-      theresults<-NULL
+    if (length(results_array)==0 && !is.null(theoverall)){##The user has requested only the omnibus test and not the tests for the individual variables
+      results_array<-NULL
       thevartab<-NULL
     }
 
@@ -168,100 +160,85 @@ print.xbal <- function (x, which.strata=dimnames(x$results)[["strata"]],
         ftable(data, col.vars=c("strata","stat"),row.vars=c("vars"))
     }
 
-    if (!is.null(theresults)) {
-    thevartab <- ftabler(theresults) # we'll update this variable later if we include p-values or significance stars
+      if (!is.null(results_array)) {
+          results_array_char <- array(dim = dim(results_array), dimnames=dimnames(results_array))
+          ## next apply rounding to DIGITS sigfigs, by statistic. If there are
+          ## multiple stratifications, then the significant figure position should be set
+          ## consistently across them.
+          for (rcol in setdiff(dimnames(results_array)[["stat"]], c("p", orig_units_columns)))
+          {    #i.e. std.diffs and z stats
+              res <- results_array[,rcol,]
+              dim(res) <- NULL
+              res <- round(res,digits=(DIGITS-1)) 
+              results_array_char[,rcol,] <- format(res,digits=DIGITS)
+          }
+          if ("p" %in% dimnames(results_array)[["stat"]])
+          {
+              res <- results_array[,"p",]
+              dim(res) <- NULL
+              results_array_char[,"p",] <- format(res, digits=DIGITS)
+          }
+          if (!is.null(orig_units_columns))
+              results_array_char[,orig_units_columns,] <-
+                  original_units_var_formatter(results_array[,orig_units_columns,,drop=FALSE], digits=DIGITS)
+
+          thevartab <- ftabler(results_array_char) # we'll update this variable later if we include p-values or significance stars
     }
 
-    if (show.signif.stars && !show.pvals && !is.null(theresults) && hasP ) {
-
-      Signif <- signifier(theresults[,"p",,drop=FALSE])
-
-      ##Nicer alignment, but not as nice labels
-      ##junk<-do.call(cbind,lapply(which.strata,function(x){cbind(as.data.frame(theresults[,,x])," "=format(Signif[,,x]))}))
-      newresults <- array(dim = dim(theresults) + c(0,1,0),
-                          dimnames=list(vars=dimnames(theresults)[["vars"]],
-                              stat=c(dimnames(theresults)[["stat"]],"sig."),
-                              strata=dimnames(theresults)[["strata"]]))
-        ## next apply rounding to DIGITS sigfigs, by statistic. If there are
-        ## multiple stratifications, then the significant figure position should be set
-        ## consistently across them.
-        for (rcol in setdiff(dimnames(theresults)[["stat"]], orig_units_columns))
-        {
-            res <- theresults[,rcol,]
-            dim(res) <- NULL
-            if (rcol!="p") { #std.diffs and z stats
-                res <- round(res,digits=(DIGITS-1)) }
-            newresults[,rcol,] <- format(res,digits=DIGITS)
-        }
-        if (!is.null(orig_units_columns))
-            for (vv in dimnames(theresults)[["vars"]])
-            {
-                res <- theresults[vv, orig_units_columns,]
-                dim(res) <- NULL
-                newresults[vv, orig_units_columns,] <- format(res, digits=DIGITS)
-            }
-        ## if there's an adj.diff column in addition to a Treatment and a Control column,
-        ## permit a little more rounding for the latter than the former.
-        if (any(orig_units_columns=="adj.diff") & length(orig_units_columns)>1)
-                        for (vv in dimnames(theresults)[["vars"]])
-                        {
-                            ouc1 <- setdiff(orig_units_columns, "adj.diff")
-                            res <- theresults[vv, ouc1,]
-                            dim(res) <- NULL
-                            newresults[vv, ouc1,] <- format(res, digits=DIGITS)
-                        }
-
-            
-      newresults[dimnames(Signif)[["vars"]], "sig.",dimnames(Signif)[["strata"]]]<-format(Signif)
-
+      if (show.signif.stars && !show.pvals && !is.null(results_array) && hasP )
+      {
+        Signif <- signifier(results_array[,"p",,drop=FALSE])
+        dimnames(Signif)[['stat']] <- 'sig.'
+        results_array_char <- abind(results_array_char, format(Signif),
+                                    along=2, use.first.dimnames=TRUE)
+        names(dimnames(results_array_char)) <- names(dimnames(results_array))
 
       if (horizontal){
-        tmp <- dimnames(newresults)[[2]]
-        theftab <- ftabler(newresults[, c(tmp[!(tmp == "p")]), , drop=FALSE])
+        tmp <- dimnames(results_array_char)[[2]]
+        theftab <- ftabler(results_array_char[, c(tmp[!(tmp == "p")]), , drop=FALSE])
 
         attr(theftab,"col.vars")$stat[attr(theftab,"col.vars")$stat=="sig."] <- ""
-        if ("z" %in% dimnames(newresults)$stat) {
+        if ("z" %in% dimnames(results_array_char)$stat) {
           attr(theftab,"col.vars")$stat[attr(theftab,"col.vars")$stat=="z"]<-"   z   "
         }
 
         thevartab<-theftab
       } else {
-        tmp <- dimnames(newresults)[[2]]
-        thevartab <- sapply(dimnames(newresults)[[3]],
+        tmp <- dimnames(results_array_char)[[2]]
+        thevartab <- sapply(dimnames(results_array_char)[[3]],
                             function(s) {
-                                tmpdata <- newresults[, c(tmp[!(tmp == "p")]), s, drop = FALSE]
+                                tmpdata <- results_array_char[, c(tmp[!(tmp == "p")]), s, drop = FALSE]
                                 tmpdn <- dimnames(tmpdata)[1:2]
                                 dim(tmpdata) <- dim(tmpdata)[1:2]
                                 dimnames(tmpdata) <- tmpdn
                                 tmpdata <- as.data.frame(tmpdata)
-                              cbind(tmpdata," " = format(Signif[,,s]))
                             },
                             simplify=FALSE, USE.NAMES=TRUE
                             )
       }
     }
 
-    if (show.pvals && hasP && !is.null(theresults)) {
+    if (show.pvals && hasP && !is.null(results_array)) {
       if (horizontal) {
-        theftab <- ftabler(theresults)
+        theftab <- ftabler(results_array_char)
         thevartab <- theftab
       } else {
         thevartab <- sapply(
-            dimnames(theresults)[[3]],
+            dimnames(results_array_char)[[3]],
             function(x) {
-              as.data.frame(theresults[,,x])
+              as.data.frame(results_array_char[,,x])
             },
             simplify=FALSE, USE.NAMES=TRUE
             )
       }
     }
 
-    ##if(show.pvals&!("p"%in% dimnames(theresults)[["stat"]])& !is.null(theresults)) {
+    ##if(show.pvals&!("p"%in% dimnames(results_array)[["stat"]])& !is.null(results_array)) {
     ##  stop("You need to request p-values when calling xBalance.")
     ##} ##irrelevant now.
 
     if (!is.null(theoverall)) {
-      nc <- length(theresults)/2
+      nc <- length(results_array)/2
       latex.annotation <- NULL
       ## paste("\\\\ \\hline Overall",
       ##       paste("\\multicolumn{",nc,"}{c}{",preSig,"}"),
@@ -280,15 +257,15 @@ print.xbal <- function (x, which.strata=dimnames(x$results)[["strata"]],
 
     if (printme) {
       ## RItools:::print.ftable(thevartab,justify.labels="center",justify.data="right") ##doesn't seem to help the alignment problem
-      if (!is.null(theresults)){ print(thevartab) }
+      if (!is.null(results_array)){ print(thevartab) }
       if (!is.null(theoverall) && print.overall) {
         cat("---Overall Test---\n")
         print(theoveralltab, quote=FALSE)
         if (show.signif.stars && !show.pvals && hasP) {
-          if (!is.null(theresults)) {
+          if (!is.null(results_array)) {
             thelegend<-attr(Signif, "legend") ##if we are showing thevartab use the legend from that object
           }
-          if (is.null(theresults) && !is.null(theoverall)) {
+          if (is.null(results_array) && !is.null(theoverall)) {
             thelegend<-attr(ChiSignif,"legend") ##use legend from the overall object if only showing that one
           }
           cat("---\nSignif. codes: ", thelegend, "\n")
@@ -301,4 +278,61 @@ print.xbal <- function (x, which.strata=dimnames(x$results)[["strata"]],
       list(vartable=thevartab,overalltable=theoveralltab)}
   }
   withOptions(list(digits = DIGITS), f)
+}
+
+
+##' formats a var-stat-strata array by var, with rounding
+##' potentially rounding a bit less for an "adj.diff" column
+##'
+##' 
+##' @title Formatting suitable for stat expressed in units specific to var
+##' @param arr numeric array
+##' @param digits number of digits for rounding
+##' @param var_format A list of lists. Each named item of the outer list will be matched to a variable. The inner lists should have two items, `mean` and `diff`. The first formats statistics based on averages. The `diff` item should format statistics that are differences.
+##' @return array of same dimension as arr but of type character
+##' @author Hansen
+##' @keywords internal
+original_units_var_formatter <- function(arr, digits, var_format = list())
+{
+    stopifnot(length(dim(arr))==3, names(dimnames(arr))[1]=="vars" )
+    newarr <- array(dim=dim(arr), dimnames=dimnames(arr))
+    for (vv in dimnames(arr)[["vars"]])
+    {
+        res <- arr[vv, ,]
+        dim(res) <- NULL
+        newarr[vv, ,] <- format(res, digits=digits)
+    }
+
+    ## if there's an adj.diff column in addition to a Treatment and a Control column,
+    ## permit a little more rounding for the latter than the former.
+    if (any(dimnames(arr)[[2]]=="adj.diff") & dim(arr)[2]>1) {
+        for (vv in dimnames(arr)[["vars"]]) {
+            ouc1 <- setdiff(dimnames(arr)[[2]], "adj.diff")
+            res <- arr[vv, ouc1,]
+            dim(res) <- NULL
+            newarr[vv, ouc1,] <- format(res, digits=digits)
+        }
+    }
+
+
+    if (length(var_format) > 0) {
+        for (i in seq_along(var_format)) {
+            whichvar <- names(var_format)[i]
+            if (any(whichvar %in% dimnames(newarr)[["vars"]])) {
+                fns <- var_format[[i]]
+
+                available <- intersect(c("Treatment", "Control"), dimnames(newarr)[["stat"]])
+                for (j in available) {
+                    newarr[whichvar, j, ] <- format(fns$mean(arr[whichvar, j, ]), digits = digits)
+                }
+
+                available <- intersect(c("adj.diff", "sd.diff", "pooled.sd"), dimnames(newarr)[["stat"]])
+                for (j in available) {
+                    newarr[whichvar, j, ] <- format(fns$diff(arr[whichvar, j, ]), digits = digits)
+                }
+            }
+        }
+    }
+
+    return(newarr)
 }

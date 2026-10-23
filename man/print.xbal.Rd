@@ -3,7 +3,8 @@
 \name{print.xbal}
 \alias{print.xbal}
 \alias{print}
-\title{Printing xBalance Objects}
+\alias{print.balancetest}
+\title{Printing xBalance and balanceTest Objects}
 \usage{
 \method{print}{xbal}(
   x,
@@ -65,21 +66,14 @@ list for each stratification (\code{FALSE}).}
 }
 }
 \description{
-A \code{print} method for \code{xBalance} objects.
+A \code{print} method for balance test objects produced by \code{xBalance} and \code{balanceTest}.
 }
 \examples{
 data(nuclearplants)
 
-xb0 <- balanceTest(pr~ date + t1 + t2 + cap + ne + ct + bw + cum.n,
-              data=nuclearplants)
 
-print(xb0)
-
-xb1 <- balanceTest(pr~ date + t1 + t2 + cap + ne + ct + bw + cum.n + strata(pt),
-         data = nuclearplants,
-         report = c("all"))
-
-str(xb1)
+xb1 <- balanceTest(pr ~ date + t1 + t2 + cap + ne + ct + bw + cum.n + strata(pt),
+         data = nuclearplants)
 
 print(xb1)
 
@@ -100,14 +94,13 @@ print(xb1, horizontal = FALSE)
       which.vars = c("date", "t1"),
       which.stats = c("pr=0", "pr=1", "z", "p"))}
 
-## Now, not asking for the omnibus test
+## Only printing out a specific stratification factor
 xb2 <- balanceTest(pr~ date + t1 + t2 + cap + ne + ct + bw + cum.n + strata(pt),
-         data = nuclearplants,
-         report = c("all"))
+         data = nuclearplants)
 
 print(xb2, which.strata = "pt")
 }
 \seealso{
-xBalance
+\code{\link{xBalance}}, \code{\link{balanceTest}}
 }
 \keyword{print}

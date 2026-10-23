@@ -1,17 +1,17 @@
 Package: RItools
-Version: 0.5.0.9002
-Title: i113-highermoments branch of Randomization Inference Tools
-Authors@R: c(person("Jake", "Bowers", email="jwbowers@illinois.edu", role=c("aut", "cre")),
-	   person("Joshua", "Errickson", email="jerrick@umich.edu", role=c("ctb")),
-	   person("Mark", "Fredrickson", email="mark.m.fredrickson@gmail.com", role=c("aut")),
-	   person("Ben", "Hansen", email="ben.hansen@umich.edu", role=c("aut")) )
-Maintainer: Jake Bowers <jwbowers@illinois.edu>
-Description: Tools for randomization-based inference. Current focus is on the d^2 omnibus test of differences of means following Hansen and Bowers (2008) useful for assessing balance in matched observational studies or for analysis of outcomes in block-randomized experiments.
-License: MIT + file LICENSE
+Version: 0.5.0.9003
+Title: i113-highermoments-maint branch of Randomization Inference Tools
+Authors@R: c(person("Jake", "Bowers", role = c("aut", "cre"), email = "jwbowers@illinois.edu"),
+             person("Mark", "Fredrickson", role = "aut", email = "mark.m.fredrickson@gmail.com"),
+             person("Ben", "Hansen", role = "aut", email = "ben.hansen@umich.edu"),
+             person("Josh", "Errickson", role = "ctb", email = "jerrick@umich.edu"))
+Description: Tools for randomization-based inference. Current focus is on the d^2 omnibus test of differences of means following Hansen and Bowers (2008)  <doi:10.1214/08-STS254> . This test is useful for assessing balance in matched observational studies or for analysis of outcomes in block-randomized experiments.
+License: GPL (>=2)
 LazyData: true
 Depends:
     R (>= 3.5.0),
-    SparseM
+    ggplot2,
+    survival
 Imports:
     grDevices,
     abind,
@@ -20,16 +20,20 @@ Imports:
     stats,
     graphics,
     methods,
-    survival
+    Matrix,
+    SparseM,
+    tidyr,
+    tibble,
+    dplyr
 Suggests:
+    knitr, rmarkdown,
     testthat,
     roxygen2,
-    MASS,
-    RSVGTipsDevice
+    MASS
 Enhances: optmatch
-URL: https://CRAN.R-project.org/package=RItools
-RoxygenNote: 7.1.0
+URL: https://cran.r-project.org/package=RItools
 Encoding: UTF-8
+Config/roxygen2/version: 8.0.0
 Collate: 
     'ModelMatrixPlus.R'
     'Design.R'
@@ -38,11 +42,11 @@ Collate:
     'balanceTest.R'
     'balanceTest.make.stratwts.R'
     'balanceTestEngine.R'
-    'data.R'
     'flatten.xbalresult.R'
     'harmonic.R'
-    'ipr.R'
     'naImpute.R'
+    'nuclearplants.R'
+    'plot.balancetest.R'
     'plot.xbal.R'
     'print.xbal.R'
     'ritools-package.R'
@@ -56,3 +60,5 @@ Collate:
     'xBalanceEngine.R'
     'xbal_tidiers.R'
     'xtable.xbal.R'
+    'ym_long.R'
+    'ym_short.R'
