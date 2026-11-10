@@ -1,5 +1,25 @@
 # RItools {NEXTVERSION}
 
+* `balanceTest()` is now a generic. The formula method is the function as
+  before. A new `balanceSpec()` object carries a treatment assignment, matched
+  sets, an optional cluster and unit weights, and a supplied covariance matrix
+  of the covariates; `balanceTest()` on it tests against that matrix, with the
+  inverse computed once per specification, instead of the covariance it would
+  calculate from the data (#144). Both methods stop on an argument they do
+  not recognize, so the generic's `...` cannot absorb a misspelled one.
+* The omnibus test's rank, and so its degrees of freedom, no longer depends on
+  the platform when the null covariance is singular, as it is whenever a
+  factor is tested: `HB08()` now applies `XtX_pseudoinv_sqrt()` on the
+  correlation scale with a tolerance that cuts on the matrix's own scale,
+  where the default cut sat at machine precision (#146).
+* `balanceTest()`'s formula method builds its model frame from the columns of
+  `data` that the formula names, as intended; it had been falling back on
+  every column of `data`. As in `lm()`, `unit.weights` and `subset`
+  expressions are evaluated in `data` and then in the formula's environment,
+  so they can use variables of the function that wrote the formula (#146).
+* New `expandCovariates()` returns the expanded covariate columns that
+  `balanceTest()` tests, for computing a covariance elsewhere that lines up
+  with them (#144).
 * Bug fix (base R plot method svg export)
 * More graceful handling in balanceTest() of the edge case of balance testing for all-constant variables, with messages not errors and p-values of NA not 1
 
