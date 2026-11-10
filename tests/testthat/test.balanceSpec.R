@@ -215,6 +215,18 @@ test_that("the formula method's model frame holds the formula's columns (#146)",
   ## and `subset` may name a column the formula does not use
   expect_equal(balanceTest(pr ~ date + cap, data = nuclearplants, subset = pt == 0)$results[, "adj.diff", "--"],
                balanceTest(pr ~ date + cap, data = subset(nuclearplants, pt == 0))$results[, "adj.diff", "--"])
+  ## no `data` at all: the variables come from where the formula was written
+  h <- function() {
+    zz <- dat$z; a <- dat$x1; b <- dat$x2; blk <- dat$s
+    brks <- c(-Inf, 0, Inf)
+    list(balanceTest(zz ~ a + b + strata(blk)),
+         balanceTest(zz ~ cut(a, brks) + b))
+  }
+  nodata <- h()
+  ref <- balanceTest(z ~ x1 + x2 + strata(s), data = dat)
+  expect_equal(unname(nodata[[1]]$overall[, "chisquare"]), unname(ref$overall[, "chisquare"]))
+  expect_equal(unname(nodata[[1]]$results[, "adj.diff", "blk"]), unname(ref$results[, "adj.diff", "s"]))
+  expect_s3_class(nodata[[2]], "balancetest")
   ## a formula with no environment still works
   fm <- z ~ x1 + x2; environment(fm) <- NULL
   expect_equal(balanceTest(fm, data = dat)$overall, balanceTest(z ~ x1 + x2, data = dat)$overall)

@@ -223,14 +223,26 @@ balanceTest.formula <- function(fmla,
   ## environment reaches only the global one. (A column the formula reaches
   ## without naming it, as through get(), is not carried.)
   needed <- NULL
+  env <- environment(fmla)
+  if (is.null(env)) env <- parent.frame()
   if (is.data.frame(data)) {
     needed <- intersect(all.vars(terms(fmla, data = data)), names(data))
-    if (length(needed)) {
-      rhs <- Reduce(function(a, b) call("+", a, b), lapply(needed, as.name))
-      env <- environment(fmla)
-      if (is.null(env)) env <- parent.frame()
-      mf$formula <- as.formula(call("~", rhs), env = env)
+  } else if (is.environment(data)) {
+    ## No `data`: the formula's variables are looked up where the formula was
+    ## written. Those of the response's length are the frame's columns; other
+    ## objects a term uses, such as breaks for cut(), stay where they are.
+    found <- Filter(function(v) exists(v, envir = data), all.vars(terms(fmla)))
+    if (length(found)) {
+      n <- NROW(get(found[1L], envir = data))
+      needed <- Filter(function(v) {
+        obj <- get(v, envir = data)
+        (is.atomic(obj) || is.factor(obj)) && NROW(obj) == n
+      }, found)
     }
+  }
+  if (length(needed)) {
+    rhs <- Reduce(function(a, b) call("+", a, b), lapply(needed, as.name))
+    mf$formula <- as.formula(call("~", rhs), env = env)
   }
   if (cwpos <- match("unit.weights", names(mf), nomatch=0L))
       names(mf)[cwpos] <- "weights"
