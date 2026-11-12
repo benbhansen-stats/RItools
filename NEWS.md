@@ -1,12 +1,13 @@
 # RItools {NEXTVERSION}
 
-* `balanceTest()` is now a generic. The formula method is the function as
-  before. A new `balanceSpec()` object carries a treatment assignment, matched
-  sets, an optional cluster and unit weights, and a supplied covariance matrix
-  of the covariates; `balanceTest()` on it tests against that matrix, with the
-  inverse computed once per specification, instead of the covariance it would
-  calculate from the data (#144). Both methods stop on an argument they do
-  not recognize, so the generic's `...` cannot absorb a misspelled one.
+* `balanceTest()` is now a generic with two methods. The formula method is the
+  function as before; it now makes a design (`makeDesigns()`) and hands it to
+  the new method for `DesignOptions` objects, which does the calculations and
+  can be called on a design directly. Both stop on an argument they do not
+  recognize.
+* New `covariances` argument to `balanceTest()`: a list, by stratification, of
+  k by k by strata arrays of within-stratum covariances of the covariates, to
+  be used in place of those calculated from the sample (#144).
 * The omnibus test's rank, and so its degrees of freedom, no longer depends on
   the platform when the null covariance is singular, as it is whenever a
   factor is tested: `HB08()` now applies `XtX_pseudoinv_sqrt()` on the
