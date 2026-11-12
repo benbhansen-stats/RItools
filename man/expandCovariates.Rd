@@ -23,8 +23,8 @@ character variables become factors, and each factor is expanded to one
 indicator column per level (no level is left out as a reference). This
 function performs that expansion on its own, so that a covariance matrix
 computed elsewhere, for instance on a whole cohort, lines up column for
-column with what \code{\link{balanceTest}} tests when given a
-\code{\link{balanceSpec}}.
+column with what \code{\link{balanceTest}} tests when given
+\code{covariances}.
 }
 \details{
 Missing covariate values are kept as \code{NA}. Any \code{strata()} or

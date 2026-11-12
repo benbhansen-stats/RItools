@@ -60,37 +60,37 @@ keeps `test.notforCRAN.R` and `test.tidiers.R` out of the CRAN build.
 
 ## Architecture
 
-`balanceTest()` is an S3 generic (`R/balanceTest.R`) with two methods that
-share one internal body, `.balanceTestFromFrame()`, which runs steps 2 to 8
-below from a formula and a model frame carrying a `(weights)` column:
+`balanceTest()` is an S3 generic with two methods:
 
-- `balanceTest.formula`: the original interface, with its first formal still
-  named `fmla` so calls by name keep working. Step 1 below is its own. Both
-  methods stop on an argument they do not recognize (`.stopOnUnusedArguments`).
-- `balanceTest.balanceSpec` (`R/balanceSpec.R`): a `balanceSpec()` object
-  carries treatment, strata, optional cluster and unit weights, the variables
-  to test, and a supplied covariance matrix of the expanded covariates, whose
-  pseudo-inverse square root is computed once in the constructor by
-  `.pseudoinvSqrtOfCovariance()`: `XtX_pseudoinv_sqrt()` on the correlation
-  scale with a tolerance that cuts on the matrix's own scale, so the rank
-  depends on neither the BLAS nor the variables' units. `HB08()` uses the
-  same function (#146). The method
-  builds the formula, sets `covariate.scales` from the positive entries of
-  the matrix's diagonal, and runs the shared body with `HB08_fixed(spec)` as
-  the inferentials calculator: the null covariance of the adjusted
-  differences is the supplied matrix times a design scalar (sum over strata
-  of the squared stratum weight ratio over `1/n_t + 1/n_c`), so the inverse
-  is reused. Where values were imputed, each entry is instead scaled stratum
-  by stratum by the share of units observed on both variables (read from the
-  new `NotMissing` slot of `CovsAlignedToADesign`), and the inverse is
-  recomputed. Expanded covariate columns missing from the matrix are an
-  error; matrix columns the data do not produce are set aside with one
-  message and the inverse for the remaining block is cached in the closure.
-- `expandCovariates(fmla, data)` (exported, `R/Design.R`) returns the
-  expanded covariate columns exactly as `makeDesigns()` makes them (one
-  indicator per factor level, character columns as factors, NAs kept), via
-  the shared internal `.expandModelFrame()`. It is what a caller computing a
-  covariance elsewhere should use so the columns line up.
+- `balanceTest.formula` (`R/balanceTest.R`): the original interface, first
+  formal still `fmla`. It builds the model frame (step 1 below), makes a
+  design with `makeDesigns()` (step 2), and calls the generic on the design.
+- `balanceTest.DesignOptions` (`R/balanceTest.DesignOptions.R`): steps 3 to 8
+  on a design object. Both methods stop on an argument they do not recognize
+  (`.stopOnUnusedArguments`).
+
+Supplied covariances (`R/suppliedCovariance.R`): the `covariances` argument is
+a list by stratification of k by k by strata arrays (a k by k matrix serves
+every stratum), named for the expanded covariate columns and the strata. For a
+stratification with an entry, `HB08_supplied()` replaces the inferentials
+calculator: the null covariance is the sum over strata of the stratum's
+supplied covariance times the squared stratum weight ratio over
+`1/n_t + 1/n_c`. Supplying each stratum's sample covariance reproduces
+`HB08()` exactly (complete data, unit weights 1), which is how it is tested.
+Where values were imputed, a stratum's entries are scaled by the share of
+units observed on both variables (the `NotMissing` slot of
+`CovsAlignedToADesign`; `StrataLevels` names the strata). There is no
+separate object for this and nothing is precomputed. An earlier `balanceSpec`
+object was dropped at the working group's request (2026-11-11).
+
+`.pseudoinvSqrtOfCovariance()` wraps `XtX_pseudoinv_sqrt()`: correlation
+scale, and a tolerance that cuts on the matrix's own scale, so the rank
+depends on neither the BLAS nor the variables' units; `HB08()` and
+`HB08_supplied()` both use it (#146).
+
+`expandCovariates(fmla, data)` (exported, `R/Design.R`) returns the expanded
+covariate columns exactly as `makeDesigns()` makes them, for computing
+covariances elsewhere that line up with the test.
 
 The `balanceTest()` pipeline:
 
@@ -155,6 +155,8 @@ reach MEERKT directly.
   `TST`, `STY`).
 - Do not name an internal function `balanceTest.<something>`: with
   `balanceTest` a generic, R CMD check reads it as an unregistered method.
+- RItools work goes to benbhansen-stats/RItools (remote `ben`), not the
+  public upstream, until the working group submits it there.
 - Open issues of note: #142 (Cauchy combination to side-step degeneracy, on
   branch `cauchycomb`), #25 (flagging degenerate chi-square distributions),
   #113 (higher moments, branch `i113-highermoments`), #90 (broom tidiers),

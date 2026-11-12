@@ -404,8 +404,8 @@ makeDesigns <- function(fmla, data) {
 ##' indicator column per level (no level is left out as a reference). This
 ##' function performs that expansion on its own, so that a covariance matrix
 ##' computed elsewhere, for instance on a whole cohort, lines up column for
-##' column with what \code{\link{balanceTest}} tests when given a
-##' \code{\link{balanceSpec}}.
+##' column with what \code{\link{balanceTest}} tests when given
+##' \code{covariances}.
 ##'
 ##' Missing covariate values are kept as \code{NA}. Any \code{strata()} or
 ##' \code{cluster()} terms in the formula, and any response, are ignored.
@@ -819,6 +819,7 @@ aggregateDesigns <- function(design) {
 #' @slot StrataWeightRatio For each unit, ratio of stratum weight to \eqn{h_b}; but see Details.
 #' @slot Cluster Factor indicating who's in the same cluster with who
 #' @slot OriginalVariables Look up table associating Covariates cols to terms in the calling formula, as in ModelMatrixPlus
+#' @slot StrataLevels The levels of the stratification, in the order of the columns of StrataMatrix
 #' @slot NotMissing Matrix of the same shape as Covariates: for each covariate column, the unit's not-missing indicator (a fraction, for aggregated clusters); 1 throughout for the not-missing columns themselves
 #' @keywords internal
 setClass("CovsAlignedToADesign",
@@ -829,7 +830,8 @@ setClass("CovsAlignedToADesign",
              StrataWeightRatio = "numeric",
              OriginalVariables="integer",
              Cluster = "factor",
-             NotMissing = "matrix"
+             NotMissing = "matrix",
+             StrataLevels = "character"
              )
          )
 # apply this & pass through en route to svd
@@ -971,7 +973,8 @@ alignDesignsByStrata <- function(a_stratification, design, post.align.transform 
           StrataWeightRatio = wtr, #as extracted from the design
           OriginalVariables = origvars,
           Cluster           = factor(design@Cluster[keep]),
-          NotMissing        = NMcov
+          NotMissing        = NMcov,
+          StrataLevels      = levels(ss)
           )
 }
 

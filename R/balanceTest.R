@@ -78,15 +78,43 @@
 ##' its missingness information may be labeled with the name of the other variable in the output.
 ##'
 ##'
-##' \code{balanceTest} is a generic function. The formula method is described
-##' here; a \code{\link{balanceSpec}} method tests against a supplied
-##' covariance matrix in place of the one calculated from the data.
+##' \code{balanceTest} is a generic function. The formula method, described
+##' here, makes a design from the formula and data and hands it to the method
+##' for designs, which does the calculations. Both take \code{covariances},
+##' for testing against supplied covariance matrices in place of those
+##' calculated from the data; see Supplied covariances.
+##'
+##' @section Supplied covariances:
+##' By default the null covariance of the adjusted differences is built from
+##' the sample covariance of the covariates within each stratum. With
+##' \code{covariances}, the within-stratum covariances are supplied instead,
+##' for instance from a larger population than the sample at hand. The
+##' argument is a list with one entry per stratification to be treated this
+##' way, named as the stratifications are in the result (the strata variable's
+##' name, or \code{"--"} for the unstratified comparison); a stratification
+##' with no entry is tested in the usual way. Each entry is an array of
+##' dimension k by k by the number of strata: the first two dimensions are
+##' named for the covariate columns as \code{\link{expandCovariates}}
+##' produces them (factors contribute one column per level), and the third
+##' for the levels of the stratification. A k by k matrix serves for every
+##' stratum alike. Covariate columns the array lacks are an error. Where
+##' covariate values are missing, a stratum's contribution to an entry is
+##' scaled by the share of its units observed on both variables, as the
+##' sample calculation effectively does. The not-missing indicator rows are
+##' not tested under a supplied covariance. Unit weights and clusters are
+##' not accounted for in the scaling: with them, the supplied covariances
+##' have to describe the weighted or cluster-aggregated rows. Zero weights,
+##' and so \code{subset}, are refused, as is \code{post.alignment.transform}.
+##' For a stratification with supplied covariances the
+##' \code{inferentials.calculator} argument is not used. Standard differences
+##' are still scaled by the sample's pooled s.d.s unless
+##' \code{covariate.scales} is given.
 ##'
 ##' @title Standardized Differences for Stratified Comparisons
 ##' @order 1
 ##' @param fmla A formula containing an indicator of treatment
 ##'   assignment on the left hand side and covariates at right; or a
-##'   \code{\link{balanceSpec}}.
+##'   \code{DesignOptions} object, as \code{makeDesigns} returns.
 ##' @param ... Not used by either method, which stop on any argument they do
 ##'   not recognize; present so that methods can add arguments.
 ##' @param data A data frame in which \code{fmla} and \code{strata}
@@ -104,6 +132,8 @@
 ##' as denominators of\code{std.diffs} (optional).
 ##' @param include.NA.flags Present item missingness comparisons as well as covariates themselves?
 ##' @param inferentials.calculator Function; calculates \sQuote{inferential} statistics. (Not currently intended for use by end-users.)
+##' @param covariances Optional supplied covariances: a list of arrays, one
+##'   per stratification; see Supplied covariances.
 ##' @param post.alignment.transform Optional transformation applied to
 ##'   covariates just after their stratum means are subtracted off.
 ##'   Should accept a vector of weights as its second argument.
@@ -122,7 +152,7 @@
 ##'   this type performed separately in each stratum. Significance
 ##'   assessments are based on large-sample approximations
 ##'   to these reference distributions.
-##' @seealso \code{\link{HB08}}, \code{\link{balanceSpec}}, \code{\link{expandCovariates}}
+##' @seealso \code{\link{HB08}}, \code{\link{expandCovariates}}
 ##' @export
 ##' @references Hansen, B.B. and Bowers, J. (2008), ``Covariate
 ##'   Balance in Simple, Stratified and Clustered Comparative
@@ -194,6 +224,7 @@ balanceTest.formula <- function(fmla,
                                 post.alignment.transform = NULL,
                                 inferentials.calculator = HB08,
                                 p.adjust.method = "holm",
+                                covariances = NULL,
                                 ...) {
   .stopOnUnusedArguments(match.call(expand.dots = FALSE)$...)
 ### API Assumptions:
@@ -275,150 +306,22 @@ balanceTest.formula <- function(fmla,
           data$'(offset)' <- NULL
       }
 
-  .balanceTestFromFrame(fmla, data,
-                        stratum.weights = stratum.weights,
-                        include.NA.flags = include.NA.flags,
-                        covariate.scales = covariate.scales,
-                        post.alignment.transform = post.alignment.transform,
-                        inferentials.calculator = inferentials.calculator,
-                        p.adjust.method = p.adjust.method)
-}
-
-##' The shared body of the balanceTest methods
-##'
-##' Runs the pipeline from a formula and a model frame that already carries a
-##' \code{(weights)} column: design, descriptives, stratum weights, alignment,
-##' inferentials, multiplicity adjustment, and assembly of the result.
-##'
-##' @inheritParams balanceTest.formula
-##' @param fmla The formula, with any \code{strata()} and \code{cluster()} terms.
-##' @param data A model frame with a \code{(weights)} column.
-##' @return An object of class \code{c("balancetest", "xbal", "list")}.
-##' @keywords internal
-.balanceTestFromFrame <- function(fmla, data,
-                                  stratum.weights = harmonic_times_mean_weight,
-                                  include.NA.flags = TRUE,
-                                  covariate.scales = setNames(numeric(0), character(0)),
-                                  post.alignment.transform = NULL,
-                                  inferentials.calculator = HB08,
-                                  p.adjust.method = "holm") {
-  if (is.null(p.adjust.method)) {
-    p.adjust.method <- "none"
-  }
-
   if (any(NAwts <- is.na(data$'(weights)'))) {
     data[NAwts, '(weights)'] <- 0
     warning("NA unit.weights detected; treating as 0s")
   }
 
-  ## we used to allow select report options, not any more.
-  report <- c("adj.means","adj.mean.diffs","chisquare.test", "std.diffs","z.scores","p.values")
-
-  design          <- makeDesigns(fmla, data)
-  ## Which of the NM cols to look at for a given variable's NM info
-  NMpatterns <-   c("_any Xs recorded_", colnames(design@NotMissing))[1L+design@NM.Covariates]
-  NMpatterns <- paste0("(",NMpatterns,")")
-
-  aggDesign       <- aggregateDesigns(design)
-  ## (Creation of stratum weightings for use in
-  ##  descriptives calculations would go here, if
-  ## we wanted to allow departures from the ETT default.
-  ## Something like `design@Sweights <- DesignWeights(aggDesign, <...>)`.)
-  descriptives    <- designToDescriptives(design, covariate.scales)
-  ## The notmissing indicators can't themselves be missing, so no role for
-  ## another notmissing indicator to record where its missingness pattern.
-  ## Instead we just record a blank for them:
-  NMpatterns <- c(NMpatterns, rep("", dim(descriptives)[1]-length(NMpatterns)))
-
-  # these weights govern inferential but not descriptive calculations
-
-  aggDesign <- as(aggDesign, "StratumWeightedDesignOptions")
-  aggDesign@Sweights <-
-      DesignWeights(aggDesign, stratum.weights)
-
-  strataAligned <- sapply(colnames(aggDesign@StrataFrame),
-                          alignDesignsByStrata,
-                          design=aggDesign,
-                          post.align.transform=post.alignment.transform,
-                          simplify = FALSE, USE.NAMES = TRUE)
-
-  origvars <- strataAligned[[1]]@OriginalVariables #to include NotMissing columns
-
-  tmp <- lapply(strataAligned, inferentials.calculator)
-  names(tmp) <- colnames(aggDesign@StrataFrame)
-
-  ans <- list()
-
-  # append the z and p to the "descriptives" array (making it somewhat misnamed)
-  tmp.z <- as.data.frame(lapply(tmp, function(tt) { tt$z }))
-  tmp.p <- as.data.frame(lapply(tmp, function(tt) { tt$p }))
-  nstats.previous <- dim(descriptives)[2]
-  descriptives <- abind(descriptives, along = 2, tmp.z, tmp.p, use.first.dimnames = TRUE)
-  names(dimnames(descriptives)) <- c("vars", "stat", "strata")
-
-  dimnames(descriptives)[[2]][nstats.previous + 1:2] <- c("z", "p")
-
-  inferentials <- do.call(rbind, lapply(tmp, function(s) {
-    data.frame(s$Msq, s$DF, pchisq(s$Msq, df = s$DF, lower.tail = FALSE))
-  }))
-  colnames(inferentials) <- c("chisquare", "df", "p.value")
-
-  tcovs <- lapply(tmp, function(r) {
-    tcov <- r$tcov
-    dimnames(tcov) <-
-      rep(list(dimnames(descriptives)[["vars"]]),2)
-    tcov
-  })
-
-  # Deal with summaries of not-missing indicators that only ever take the value T
-  nmvars <- identify_NM_vars(dimnames(descriptives)[["vars"]])
-  # next line assumes every "stat" not in the given list is a mean
-  # over a group assigned to some treatment condition.
-  group_mean_labs <- setdiff(dimnames(descriptives)[["stat"]],
-                             c("std.diff", "adj.diff", "pooled.sd", "z", "p"))
-  if (length(nmvars) & length(group_mean_labs)) #cf #111
-  {
-	  groupmeans <- descriptives[nmvars, group_mean_labs,,drop=FALSE]
-	  bad <- apply(abs(groupmeans - 1) < sqrt(.Machine$double.eps), 1, all)
-	  toremove <- match(nmvars[bad], dimnames(descriptives)[["vars"]])
-	  if(length(toremove)>0){ ## if toremove=integer(0) then it drops all vars from descriptives
-		  descriptives <- descriptives[-toremove,,,drop=FALSE]
-	    tcovs <- lapply(tcovs,
-        function(mat){mat[-toremove, -toremove, drop=FALSE]}
-        )
-      origvars <- origvars[-toremove]
-
-      ## also trim covars to NM patterns lookup table:
-      NMpatterns <- NMpatterns[-toremove]
-      ## If the NM pattern var that a covar got mapped to
-      ## was removed, we take the covar to have no missings
-      ## anywhere, and report "" as the name of its nonmissing
-      ## indicator variable:
-      strings_to_remove <- dimnames(descriptives)[["vars"]][toremove]
-      NMpatterns[ NMpatterns%in% strings_to_remove] <- ""
-	  }
-  }
-
-  for (s in 1L:dim(descriptives)[3]) {
-  descriptives[, "p", s] <- 
-    p.adjust(descriptives[, "p", s], method = p.adjust.method)
-  }
-  attr(descriptives, "NMpatterns") <- NMpatterns
-  attr(descriptives, "originals") <- origvars
-  attr(descriptives, "term.labels") <- design@TermLabels
-# Now `attr(d, "term.labels")[attr(d, "originals")]`
-# associates variables to terms of fmla
-  attr(descriptives, "include.NA.flags") <- 
-    include.NA.flags # hint to print and plot methods
-
-# the meat of our xbal object
-  ans$overall <- inferentials
-  attr(ans$overall, "tcov") <- tcovs
-  ans$results <- descriptives
-
+  ## The formula and model frame become a design, and the design method
+  ## does the rest.
+  ans <- balanceTest(makeDesigns(fmla, data),
+                     stratum.weights = stratum.weights,
+                     include.NA.flags = include.NA.flags,
+                     covariate.scales = covariate.scales,
+                     post.alignment.transform = post.alignment.transform,
+                     inferentials.calculator = inferentials.calculator,
+                     p.adjust.method = p.adjust.method,
+                     covariances = covariances)
   attr(ans, "fmla") <- formula(fmla)
-  attr(ans, "report") <- report # hinting to our summary method later
-  class(ans) <- c("balancetest", "xbal", "list")
   ans
 }
 
