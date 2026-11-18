@@ -7,7 +7,10 @@
   recognize.
 * New `covariances` argument to `balanceTest()`: a list, by stratification, of
   k by k by strata arrays of within-stratum covariances of the covariates, to
-  be used in place of those calculated from the sample (#144).
+  be used in place of those calculated from the sample (#144). With `subset`
+  or unit weights of zero, the units left out stay in their strata, so the
+  covariances must describe rows in which their values are zero; see
+  `?balanceTest.DesignOptions`.
 * The omnibus test's rank, and so its degrees of freedom, no longer depends on
   the platform when the null covariance is singular, as it is whenever a
   factor is tested: `HB08()` now applies `XtX_pseudoinv_sqrt()` on the

@@ -78,38 +78,6 @@
 ##' its missingness information may be labeled with the name of the other variable in the output.
 ##'
 ##'
-##' \code{balanceTest} is a generic function. The formula method, described
-##' here, makes a design from the formula and data and hands it to the method
-##' for designs, which does the calculations. Both take \code{covariances},
-##' for testing against supplied covariance matrices in place of those
-##' calculated from the data; see Supplied covariances.
-##'
-##' @section Supplied covariances:
-##' By default the null covariance of the adjusted differences is built from
-##' the sample covariance of the covariates within each stratum. With
-##' \code{covariances}, the within-stratum covariances are supplied instead,
-##' for instance from a larger population than the sample at hand. The
-##' argument is a list with one entry per stratification to be treated this
-##' way, named as the stratifications are in the result (the strata variable's
-##' name, or \code{"--"} for the unstratified comparison); a stratification
-##' with no entry is tested in the usual way. Each entry is an array of
-##' dimension k by k by the number of strata: the first two dimensions are
-##' named for the covariate columns as \code{\link{expandCovariates}}
-##' produces them (factors contribute one column per level), and the third
-##' for the levels of the stratification. A k by k matrix serves for every
-##' stratum alike. Covariate columns the array lacks are an error. Where
-##' covariate values are missing, a stratum's contribution to an entry is
-##' scaled by the share of its units observed on both variables, as the
-##' sample calculation effectively does. The not-missing indicator rows are
-##' not tested under a supplied covariance. Unit weights and clusters are
-##' not accounted for in the scaling: with them, the supplied covariances
-##' have to describe the weighted or cluster-aggregated rows. Zero weights,
-##' and so \code{subset}, are refused, as is \code{post.alignment.transform}.
-##' For a stratification with supplied covariances the
-##' \code{inferentials.calculator} argument is not used. Standard differences
-##' are still scaled by the sample's pooled s.d.s unless
-##' \code{covariate.scales} is given.
-##'
 ##' @title Standardized Differences for Stratified Comparisons
 ##' @order 1
 ##' @param fmla A formula containing an indicator of treatment
@@ -132,8 +100,8 @@
 ##' as denominators of\code{std.diffs} (optional).
 ##' @param include.NA.flags Present item missingness comparisons as well as covariates themselves?
 ##' @param inferentials.calculator Function; calculates \sQuote{inferential} statistics. (Not currently intended for use by end-users.)
-##' @param covariances Optional supplied covariances: a list of arrays, one
-##'   per stratification; see Supplied covariances.
+##' @param covariances Optional supplied covariances; see
+##'   \code{\link{balanceTest.DesignOptions}}.
 ##' @param post.alignment.transform Optional transformation applied to
 ##'   covariates just after their stratum means are subtracted off.
 ##'   Should accept a vector of weights as its second argument.

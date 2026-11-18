@@ -1,5 +1,54 @@
-##' @rdname balanceTest
-##' @order 3
+##' Balance test for a design, with optional supplied covariances
+##'
+##' The method of \code{\link{balanceTest}} for a design, a
+##' \code{DesignOptions} object as \code{makeDesigns} returns. The formula
+##' method makes a design from its formula and data and hands it to this
+##' method, which does the calculations. Both take \code{covariances}, for
+##' testing against supplied covariance matrices in place of those calculated
+##' from the data.
+##'
+##' @section Supplied covariances:
+##' By default the null covariance of the adjusted differences is built from
+##' the sample covariance of the covariates within each stratum. With
+##' \code{covariances}, the within-stratum covariances are supplied instead,
+##' for instance from a larger population than the sample at hand. The
+##' argument is a list with one entry per stratification to be treated this
+##' way, named as the stratifications are in the result (the strata variable's
+##' name, or \code{"--"} for the unstratified comparison); a stratification
+##' with no entry is tested in the usual way. Each entry is an array of
+##' dimension k by k by the number of strata: the first two dimensions are
+##' named for the covariate columns as \code{\link{expandCovariates}}
+##' produces them (factors contribute one column per level), and the third
+##' for the levels of the stratification. A k by k matrix serves for every
+##' stratum alike. Covariate columns the array lacks are an error. Where
+##' covariate values are missing, a stratum's contribution to an entry is
+##' scaled by the share of its units observed on both variables, as the
+##' sample calculation effectively does. The not-missing indicator rows are
+##' not tested under a supplied covariance. Unit weights and clusters are
+##' not accounted for in the scaling: with them, the supplied covariances
+##' have to describe the weighted or cluster-aggregated rows. That holds
+##' for unit weights of zero too, which is how the formula method's
+##' \code{subset} is carried out: as elsewhere in the package, the units
+##' left out stay in their strata with weight zero, so the covariances have
+##' to be those of rows in which their values are zero. Covariances of the
+##' covariates themselves, such as a population's, do not describe such
+##' rows; to test the remaining units against them, subset the data
+##' beforehand instead.
+##' \code{post.alignment.transform} is refused.
+##' For a stratification with supplied covariances the
+##' \code{inferentials.calculator} argument is not used. Standard differences
+##' are still scaled by the sample's pooled s.d.s unless
+##' \code{covariate.scales} is given.
+##'
+##' @name balanceTest.DesignOptions
+##' @inheritParams balanceTest
+##' @param fmla A \code{DesignOptions} object, as \code{makeDesigns} returns.
+##' @param data Not used: a design carries its own data. Supplying it is an
+##'   error.
+##' @param covariances Optional supplied covariances: a list of arrays, one
+##'   per stratification; see Supplied covariances.
+##' @return As \code{\link{balanceTest}}.
+##' @keywords internal
 ##' @method balanceTest DesignOptions
 ##' @export
 balanceTest.DesignOptions <- function(fmla, data = NULL,
@@ -60,10 +109,6 @@ balanceTest.DesignOptions <- function(fmla, data = NULL,
     if (!is.null(post.alignment.transform)) {
       stop("covariances cannot be combined with post.alignment.transform: ",
            "they describe the untransformed covariates")
-    }
-    if (any(design@UnitWeights == 0)) {
-      stop("covariances cannot be combined with zero unit weights, which is how `subset` ",
-           "is implemented: units of weight zero would still be counted. Subset the data instead.")
     }
   }
   tmp <- mapply(function(aligned, covariance) {

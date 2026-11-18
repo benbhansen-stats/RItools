@@ -964,6 +964,9 @@ alignDesignsByStrata <- function(a_stratification, design, post.align.transform 
     ## not-missing indicators aligned with the columns of covars, for
     ## inferentials calculators that need to know where values were imputed
     NMcov <- cbind(NM[, nmcols_Covs, drop = FALSE], matrix(1, nrow(NM), k.NM))
+    ## a unit of weight zero contributes a zero whatever its values, so a
+    ## missing value on it is not an imputation to account for
+    NMcov[UW == 0, ] <- 1
     colnames(NMcov) <- vars
 
       new("CovsAlignedToADesign",

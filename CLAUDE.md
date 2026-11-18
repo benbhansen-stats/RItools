@@ -76,7 +76,9 @@ stratification with an entry, `HB08_supplied()` replaces the inferentials
 calculator: the null covariance is the sum over strata of the stratum's
 supplied covariance times the squared stratum weight ratio over
 `1/n_t + 1/n_c`. Supplying each stratum's sample covariance reproduces
-`HB08()` exactly (complete data, unit weights 1), which is how it is tested.
+`HB08()` exactly (complete data, unit weights 1), which is how it is tested. Units of weight zero
+(`subset`) stay in their strata, so with them it is the covariance of the rows
+with those units zeroed that reproduces `HB08()`'s z statistics.
 Where values were imputed, a stratum's entries are scaled by the share of
 units observed on both variables (the `NotMissing` slot of
 `CovsAlignedToADesign`; `StrataLevels` names the strata). There is no

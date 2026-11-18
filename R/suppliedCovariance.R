@@ -94,6 +94,8 @@
 ##' control counts; strata with one unit, or lacking either group, contribute
 ##' nothing. Supplying each stratum's own sample covariance reproduces
 ##' \code{HB08} when no covariate value is missing and unit weights are 1.
+##' With unit weights of zero it is the covariance of the rows with those
+##' units' values set to zero that reproduces \code{HB08}'s z statistics.
 ##' Where values were imputed, a stratum's contribution to an entry is
 ##' scaled by the share of its units observed on both variables.
 ##'

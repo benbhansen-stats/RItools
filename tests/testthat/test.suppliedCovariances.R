@@ -259,11 +259,58 @@ test_that("malformed covariances are refused with a reason", {
   ## an empty list is no covariances at all
   expect_equal(f(list())$overall, balanceTest(z ~ x1 + x2 + x3 + strata(s), data = dat)$overall)
   ## combinations the supplied covariances cannot describe
-  expect_error(balanceTest(z ~ x1 + x2 + x3 + strata(s), data = dat, subset = x1 > -1,
-                           covariances = list(s = arr)), "Subset the data instead")
   expect_error(balanceTest(z ~ x1 + x2 + x3 + strata(s), data = dat,
                            post.alignment.transform = function(x, w) rank(x),
                            covariances = list(s = arr)), "post.alignment.transform")
+})
+
+test_that("with subset, covariances of the zero-weighted rows reproduce HB08", {
+  ## `subset` keeps the units it leaves out, with weight zero, so the
+  ## covariances that reproduce the sample calculation are those of rows in
+  ## which the left-out units' values are zero
+  set.seed(20261118)
+  n <- 120
+  d <- data.frame(s = factor(rep(c("a", "b", "c"), each = 40)), x1 = rnorm(n), x2 = rnorm(n))
+  d$z <- as.integer(ave(runif(n), d$s, FUN = rank) <= 15)
+  ## uneven shares kept: half of stratum a, three quarters of b and c
+  d$keep <- c(rep(c(TRUE, FALSE), 20), rep(c(TRUE, TRUE, TRUE, FALSE), 20))
+  vars <- c("x1", "x2")
+  layers <- function(rows) {
+    a <- array(0, c(2, 2, 3), dimnames = list(vars, vars, levels(d$s)))
+    for (l in levels(d$s)) a[, , l] <- rows(d[d$s == l, ])
+    list(s = a)
+  }
+  zeroed <- layers(function(b) cov(as.matrix(b[, vars]) * b$keep))
+  kept   <- layers(function(b) cov(as.matrix(b[b$keep, vars])))
+  fmla <- z ~ x1 + x2 + strata(s) - 1
+
+  ref <- balanceTest(fmla, data = d, subset = keep)
+  got <- balanceTest(fmla, data = d, subset = keep, covariances = zeroed)
+  expect_equal(got$results[vars, "z", "s"], ref$results[vars, "z", "s"])
+  expect_equal(got$results[vars, "adj.diff", "s"], ref$results[vars, "adj.diff", "s"])
+
+  ## the covariances of the kept units belong with the subsetted data
+  ref2 <- balanceTest(fmla, data = d[d$keep, ])
+  got2 <- balanceTest(fmla, data = d[d$keep, ], covariances = kept)
+  expect_equal(got2$results[vars, "z", "s"], ref2$results[vars, "z", "s"])
+  expect_equal(got2$overall["s", "chisquare"], ref2$overall["s", "chisquare"])
+  ## and do not reproduce the `subset` calculation
+  mixed <- balanceTest(fmla, data = d, subset = keep, covariances = kept)
+  expect_true(all(abs(mixed$results[vars, "z", "s"] - ref$results[vars, "z", "s"]) > 1e-3))
+
+  ## a missing value on a unit left out changes nothing: its row is zero
+  ## either way, so no share-observed scaling applies to it
+  dn <- d
+  dn$x1[which(!dn$keep)[1:6]] <- NA
+  refn <- balanceTest(fmla, data = dn, subset = keep)
+  gotn <- balanceTest(fmla, data = dn, subset = keep, covariances = zeroed)
+  expect_equal(refn$results[vars, "z", "s"], ref$results[vars, "z", "s"])
+  expect_equal(gotn$results[vars, "z", "s"], ref$results[vars, "z", "s"])
+
+  ## zero weights given directly behave as `subset` does
+  d$w <- as.numeric(d$keep)
+  goww <- balanceTest(fmla, data = d, unit.weights = w, covariances = zeroed)
+  expect_equal(goww$results[vars, "z", "s"], ref$results[vars, "z", "s"])
 })
 
 test_that("a stratum that contributes nothing needs no usable layer", {
